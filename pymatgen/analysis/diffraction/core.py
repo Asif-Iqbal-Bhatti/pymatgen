@@ -1,24 +1,22 @@
-# Copyright (c) Pymatgen Development Team.
-# Distributed under the terms of the MIT License.
+"""This module implements core classes for calculation of diffraction patterns."""
 
-"""
-This module implements core classes for calculation of diffraction patterns.
-"""
+from __future__ import annotations
 
 import abc
 import collections
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from pymatgen.core.spectrum import Spectrum
-from pymatgen.core.structure import Structure
 from pymatgen.util.plotting import add_fig_kwargs
+
+if TYPE_CHECKING:
+    from pymatgen.core import Structure
 
 
 class DiffractionPattern(Spectrum):
-    """
-    A representation of a diffraction pattern
-    """
+    """A representation of a diffraction pattern."""
 
     XLABEL = "$2\\Theta$"
     YLABEL = "Intensity"
@@ -41,9 +39,7 @@ class DiffractionPattern(Spectrum):
 
 
 class AbstractDiffractionPatternCalculator(abc.ABC):
-    """
-    Abstract base class for computing the diffraction pattern of a crystal.
-    """
+    """Abstract base class for computing the diffraction pattern of a crystal."""
 
     # Tolerance in which to treat two peaks as having the same two theta.
     TWO_THETA_TOL = 1e-5
@@ -131,7 +127,7 @@ class AbstractDiffractionPatternCalculator(abc.ABC):
                     )
                 elif annotate_peaks == "compact":
                     if all(all(i < 10 for i in hkl_tuple) for hkl_tuple in hkl_tuples):
-                        label = ",".join(["".join(map(str, hkl_tuple)) for hkl_tuple in hkl_tuples])
+                        label = ",".join("".join(map(str, hkl_tuple)) for hkl_tuple in hkl_tuples)
                         # 'compact' label. Would be unclear for indices >= 10
                         # It would have more than 3 figures, e.g. 1031
 
@@ -222,8 +218,9 @@ def get_unique_families(hkls):
     Returns:
         {hkl: multiplicity}: A dict with unique hkl and multiplicity.
     """
+
     # TODO: Definitely can be sped up.
-    def is_perm(hkl1, hkl2):
+    def is_perm(hkl1, hkl2) -> bool:
         h1 = np.abs(hkl1)
         h2 = np.abs(hkl2)
         return all(i == j for i, j in zip(sorted(h1), sorted(h2)))

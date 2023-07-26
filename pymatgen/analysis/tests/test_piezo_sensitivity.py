@@ -1,21 +1,14 @@
-# Copyright (c) Pymatgen Development Team.
-# Distributed under the terms of the MIT License.
-
 """
 Test for the piezo tensor class
 """
 
-__author__ = "Handong Ling"
-__version__ = "0.1"
-__maintainer__ = "Handong Ling"
-__email__ = "handongling@berkeley.edu"
-__status__ = "Development"
-__date__ = "4/23/19"
+from __future__ import annotations
 
 import os
-import unittest
+import pickle
 
 import numpy as np
+import pytest
 
 import pymatgen
 from pymatgen.analysis.piezo_sensitivity import (
@@ -32,6 +25,13 @@ try:
 except ImportError:
     Phonopy = None
 
+__author__ = "Handong Ling"
+__version__ = "0.1"
+__maintainer__ = "Handong Ling"
+__email__ = "handongling@berkeley.edu"
+__status__ = "Development"
+__date__ = "4/23/19"
+
 test_dir = os.path.join(PymatgenTest.TEST_FILES_DIR, "piezo_sensitivity")
 
 
@@ -43,9 +43,11 @@ class PiezoSensitivityTest(PymatgenTest):
         self.FCM = np.load(os.path.join(test_dir, "pztfcm.npy"), allow_pickle=True)
         self.pointops = np.load(os.path.join(test_dir, "pointops.npy"), allow_pickle=True)
         self.sharedops = np.load(os.path.join(test_dir, "sharedops.npy"), allow_pickle=True)
-        self.BEC_operations = np.load(os.path.join(test_dir, "becops.npy"), allow_pickle=True)
         self.IST_operations = np.load(os.path.join(test_dir, "istops.npy"), allow_pickle=True)
-        self.FCM_operations = np.load(os.path.join(test_dir, "fcmops.npy"), allow_pickle=True)
+        with open(os.path.join(test_dir, "becops.pkl"), "rb") as file:
+            self.BEC_operations = pickle.load(file)
+        with open(os.path.join(test_dir, "fcmops.pkl"), "rb") as file:
+            self.FCM_operations = pickle.load(file)
         self.piezo = np.array(
             [
                 [
@@ -68,18 +70,21 @@ class PiezoSensitivityTest(PymatgenTest):
 
     def test_BornEffectiveChargeTensor(self):
         bec = BornEffectiveCharge(self.piezo_struc, self.BEC, self.pointops)
-        self.assertArrayAlmostEqual(self.BEC, bec.bec)
+        self.assert_all_close(self.BEC, bec.bec)
 
     def test_InternalStrainTensor(self):
         ist = InternalStrainTensor(self.piezo_struc, self.IST, self.pointops)
-        self.assertArrayAlmostEqual(ist.ist, self.IST)
+        self.assert_all_close(ist.ist, self.IST)
 
     def test_ForceConstantMatrix(self):
         fcmt = ForceConstantMatrix(self.piezo_struc, self.FCM, self.pointops, self.sharedops)
-        self.assertArrayAlmostEqual(fcmt.fcm, self.FCM)
+        self.assert_all_close(fcmt.fcm, self.FCM)
 
     def test_get_BEC_operations(self):
         bec = BornEffectiveCharge(self.piezo_struc, self.BEC, self.pointops)
+        # update test file
+        # with open(os.path.join(test_dir, "becops.pkl"), "wb") as file:
+        #     pickle.dump(bec.get_BEC_operations(), file)
         bec.get_BEC_operations()
         assert np.all(self.BEC_operations == bec.BEC_operations)
 
@@ -109,6 +114,9 @@ class PiezoSensitivityTest(PymatgenTest):
 
     def test_get_FCM_operations(self):
         fcm = ForceConstantMatrix(self.piezo_struc, self.FCM, self.pointops, self.sharedops)
+        # update test file
+        # with open(os.path.join(test_dir, "fcmops.pkl"), "wb") as file:
+        #     pickle.dump(fcm.get_FCM_operations(), file)
         fcm.get_FCM_operations()
         assert np.all(fcm.FCM_operations == self.FCM_operations)
 
@@ -201,8 +209,8 @@ class PiezoSensitivityTest(PymatgenTest):
             assert np.allclose(asum1, np.zeros([3, 3]), atol=1e-05)
             assert np.allclose(asum2, np.zeros([3, 3]), atol=1e-05)
 
-    @unittest.skipIf(Phonopy is None, "Phonopy not present")
     def test_rand_FCM(self):
+        pytest.importorskip("phonopy")
         fcm = ForceConstantMatrix(self.piezo_struc, self.FCM, self.pointops, self.sharedops)
         fcm.get_FCM_operations()
         rand_FCM = fcm.get_rand_FCM()
@@ -213,13 +221,13 @@ class PiezoSensitivityTest(PymatgenTest):
         dyn = pnstruc.get_dynamical_matrix_at_q([0, 0, 0])
         dyn = np.reshape(dyn, (10, 3, 10, 3)).swapaxes(1, 2)
         dyn = np.real(dyn)
-        numsites = len(self.piezo_struc)
+        n_sites = len(self.piezo_struc)
         masses = []
-        for j in range(numsites):
+        for j in range(n_sites):
             masses.append(self.piezo_struc.sites[j].specie.atomic_mass)
-        dynmass = np.zeros([numsites, numsites, 3, 3])
-        for m in range(numsites):
-            for n in range(numsites):
+        dynmass = np.zeros([n_sites, n_sites, 3, 3])
+        for m in range(n_sites):
+            for n in range(n_sites):
                 dynmass[m][n] = dyn[m][n] / np.sqrt(masses[m]) / np.sqrt(masses[n])
 
         dynmass = np.reshape(np.swapaxes(dynmass, 1, 2), (10 * 3, 10 * 3))
@@ -253,8 +261,8 @@ class PiezoSensitivityTest(PymatgenTest):
         piezo = get_piezo(self.BEC, self.IST, self.FCM)
         assert np.allclose(piezo, self.piezo, atol=1e-05)
 
-    @unittest.skipIf(Phonopy is None, "Phonopy not present")
     def test_rand_piezo(self):
+        pytest.importorskip("phonopy")
         rand_BEC, rand_IST, rand_FCM, piezo = rand_piezo(
             self.piezo_struc,
             self.pointops,
@@ -287,13 +295,13 @@ class PiezoSensitivityTest(PymatgenTest):
         dyn = pnstruc.get_dynamical_matrix_at_q([0, 0, 0])
         dyn = np.reshape(dyn, (10, 3, 10, 3)).swapaxes(1, 2)
         dyn = np.real(dyn)
-        numsites = len(self.piezo_struc)
+        n_sites = len(self.piezo_struc)
         masses = []
-        for j in range(numsites):
+        for j in range(n_sites):
             masses.append(self.piezo_struc.sites[j].specie.atomic_mass)
-        dynmass = np.zeros([numsites, numsites, 3, 3])
-        for m in range(numsites):
-            for n in range(numsites):
+        dynmass = np.zeros([n_sites, n_sites, 3, 3])
+        for m in range(n_sites):
+            for n in range(n_sites):
                 dynmass[m][n] = dyn[m][n] / np.sqrt(masses[m]) / np.sqrt(masses[n])
 
         dynmass = np.reshape(np.swapaxes(dynmass, 1, 2), (10 * 3, 10 * 3))
@@ -322,7 +330,3 @@ class PiezoSensitivityTest(PymatgenTest):
                 asum2 += dynmass[j][i]
             assert np.allclose(asum1, np.zeros([3, 3]), atol=1e-05)
             assert np.allclose(asum2, np.zeros([3, 3]), atol=1e-05)
-
-
-if __name__ == "__main__":
-    unittest.main()
