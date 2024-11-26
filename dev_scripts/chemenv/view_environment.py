@@ -52,6 +52,7 @@ if __name__ == "__main__":
             print()
         # Visualize the separation plane of a given algorithm
         sep_plane = False
+        algo = None
         if any(algo.algorithm_type == SEPARATION_PLANE for algo in cg.algorithms):
             test = input("Enter index of the algorithm for which you want to visualize the plane : ")
             if test != "":
@@ -64,13 +65,10 @@ if __name__ == "__main__":
                         "Unable to determine the algorithm/separation_plane you want "
                         "to visualize for this geometry. Continues without ..."
                     )
-        my_factor = 3
-        if vis is None:
-            vis = visualize(cg=cg, zoom=1, myfactor=my_factor)
-        else:
-            vis = visualize(cg=cg, vis=vis, myfactor=my_factor)
-        cg_points = [my_factor * np.array(pp) for pp in cg.points]
-        cg_central_site = my_factor * np.array(cg.central_site)
+        factor = 3.0
+        vis = visualize(cg=cg, zoom=1, factor=factor) if vis is None else visualize(cg=cg, vis=vis, factor=factor)
+        cg_points = [factor * np.array(pp) for pp in cg.points]
+        cg_central_site = factor * np.array(cg.central_site)
         if sep_plane:
             pts = [cg_points[ii] for ii in algo.plane_points]
             if algo.minimum_number_of_points == 2:
@@ -97,16 +95,42 @@ if __name__ == "__main__":
 
             if algo.minimum_number_of_points == 2:
                 vis.add_partial_sphere(
-                    coords=cg_central_site, radius=radius, color=[1, 0, 0], start=0, end=360, opacity=0.5
+                    coords=cg_central_site,
+                    radius=radius,
+                    color=[1, 0, 0],
+                    start=0,
+                    end=360,
+                    opacity=0.5,
                 )
             for pp in pts:
-                vis.add_partial_sphere(coords=pp, radius=radius, color=[1, 0, 0], start=0, end=360, opacity=0.5)
+                vis.add_partial_sphere(
+                    coords=pp,
+                    radius=radius,
+                    color=[1, 0, 0],
+                    start=0,
+                    end=360,
+                    opacity=0.5,
+                )
 
             ps1 = [cg_points[ii] for ii in algo.point_groups[0]]
             ps2 = [cg_points[ii] for ii in algo.point_groups[1]]
 
             for pp in ps1:
-                vis.add_partial_sphere(coords=pp, radius=radius, color=[0, 1, 0], start=0, end=360, opacity=0.5)
+                vis.add_partial_sphere(
+                    coords=pp,
+                    radius=radius,
+                    color=[0, 1, 0],
+                    start=0,
+                    end=360,
+                    opacity=0.5,
+                )
             for pp in ps2:
-                vis.add_partial_sphere(coords=pp, radius=radius, color=[0, 0, 1], start=0, end=360, opacity=0.5)
+                vis.add_partial_sphere(
+                    coords=pp,
+                    radius=radius,
+                    color=[0, 0, 1],
+                    start=0,
+                    end=360,
+                    opacity=0.5,
+                )
         vis.show()
